@@ -1,0 +1,112 @@
+CREATE ENTITY RiskItem ( id BIGINT PRIMARY KEY );
+ 
+CREATE ENTITY RealProperty EXTENDS RiskItem (
+    BuildingHeight INTEGER NOT NULL,
+    Coordinates Coordinate NOT NULL
+);
+ 
+CREATE ENTITY OffshorePlatform EXTENDS RealProperty (
+    AnnualRevenue Money NOT NULL,
+    DeckHeight INTEGER NOT NULL
+);
+
+
+INSERT INTO OffshorePlatform (
+    ID=1234,
+    BuildingHeight = 500,
+    Coordinates = Coordinate(lat=29.43, lon=-88.31)
+    AnnualRevenue = Money(value=450M, currency='USD'),
+    DeckHeight = 75
+);
+
+INSERT INTO OffshorePlatform (
+    ID=456,
+    BuildingHeight = 1350,
+    Coordinates = Coordinate(lat=29.03, lon=-89.62)
+    AnnualRevenue = Money(value=770M, currency='USD'),
+    DeckHeight = 100
+);
+
+
+Schedule Sched_MikesPizza_2014
+    Risk R1
+      100% for Building to RealProperty[14223]
+      100% for Contents to MovableProperty[14224]
+      100% for BI to RealProperty[14223]
+    Risk R2
+      100% for Building to RealProperty[14225]
+      100% for Contents to MovableProperty[14226]
+      100% for BI to RealProperty[14225]
+
+
+// Insurance Policy
+
+Contract Policy_MikesPizza_2014
+    Declarations
+      Subject is Sched_MikesPizza_2014
+      Status is Quoted
+      Type is Policy
+    Covers
+      100% share by EQ
+    Deductibles
+      5%
+
+
+// Reinsurance Treaty
+
+Contract Cat_GustyInsurance
+    Declarations
+      Subject is 
+        Gusty_NetOfPerRiskTreaties
+      Status is Bound
+      Type is {Cat Treaty}
+      Inception is 2014-01-01
+      Expiration is 2014-12-31
+    Covers
+      30M xs 50M Aggregate by EQ,WS
+      
+      
+PositionExpressions
+  Portfolio_Live is Book_AllPolicies WHERE Status = 'Bound’
+  Policies_Personal is Portfolio_Live WHERE LineOfBusiness = 'Personal’
+  Policies_Commercial is Portfolio_Live WHERE LineOfBusiness = 'Commercial’
+  PreCatLoss is Policies_Personal + Policies_Commercial
+                - WX_Personal - WX_Commercial
+  MyNetLoss is PreCatLoss - Cat_Treaty
+  MyNetLoss_Scaled is MyNetLoss * 1.05
+
+Structure
+  PositionExpressions  
+    Portfolio_Live is AllPolicies WHERE Contract.Status = 'Bound'
+    Portfolio_2013 is AllPolicies WHERE Contract.Status = 'Expired' 
+       AND year(Contract.Expiration) = 2013
+  
+  Book AllPolicies
+    Contract Policy_MikesPizza_2014_Final
+      Declarations
+        Subject is Sched_MikesPizza_2014
+        Inception is '2014-01-01'
+        Expiration is '2014-12-31’
+  Covers
+        100% share
+      Deductible
+        10%
+  Schedule Sched_MikesPizza_2014
+    Risk R1
+      100% for Building to RealProperty[14223]
+      100% for Contents to MovableProperty[14224]
+      100% for BI to RealProperty[14223]
+    Risk R2
+      100% for Building to RealProperty[14225]
+      100% for Contents to MovableProperty[14226]
+      100% for BI to RealProperty[14225]
+
+
+
+// Request 250-year gross loss and Technical Premium
+// by Contract using settings in Risk Analysis Profile 4
+
+USE MyStructure[‘MyGross’] WITH Settings(RapID=4)
+SELECT p.contract.name as ContractName, OEP(250) as OEP250_Gross, AAL+.2*StdDev as TechPrem
+FROM RealPropertyStochastic p
+GROUP BY p.contract.name
