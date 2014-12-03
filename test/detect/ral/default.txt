@@ -86,7 +86,7 @@ Structure
       Declarations
         Subject is Sched_MikesPizza_2014
         Inception is '2014-01-01'
-        Expiration is '2014-12-31’
+        Expiration is '2014-12-31'
   Covers
         100% share
       Deductible
@@ -100,7 +100,6 @@ Structure
       100% for Building to RealProperty[14225]
       100% for Contents to MovableProperty[14226]
       100% for BI to RealProperty[14225]
-
 
 
 // Request 250-year gross loss and Technical Premium
